@@ -7,15 +7,14 @@ import {
 } from "react";
 import type { ABClient } from "../../domain/contracts/ab-client.js";
 import type { FeatureFlagsAdminClient } from "../../domain/contracts/feature-flags-admin-client.js";
+import type { ABTestingClient } from "../../domain/contracts/ab-testing-client.js";
 
-const ABClientContext = createContext<ABClient | null>(null);
-const FeatureFlagsAdminClientContext =
-  createContext<FeatureFlagsAdminClient | null>(null);
+const ABTestingClientContext = createContext<ABTestingClient | null>(null);
 
 /** Props accepted by the React provider wrapper. */
 export interface ABProviderProps {
   /** Shared SDK client instance for the React tree. */
-  client: ABClient;
+  client: ABTestingClient;
   /** React children that should receive the client through context. */
   children: ReactNode;
 }
@@ -24,7 +23,11 @@ export interface ABProviderProps {
  * Provides one SDK client instance to a React subtree.
  */
 export function ABProvider({ client, children }: ABProviderProps): ReactElement {
-  return createElement(ABClientContext.Provider, { value: client }, children);
+  return createElement(
+    ABTestingClientContext.Provider,
+    { value: client },
+    children,
+  );
 }
 
 /**
@@ -33,7 +36,7 @@ export function ABProvider({ client, children }: ABProviderProps): ReactElement 
  * Throws when used outside `ABProvider`.
  */
 export function useABClient(): ABClient {
-  const client = useContext(ABClientContext);
+  const client = useContext(ABTestingClientContext);
 
   if (client === null) {
     throw new Error("ABProvider is missing from the React tree.");
@@ -45,7 +48,7 @@ export function useABClient(): ABClient {
 /** Props accepted by the React feature flags admin provider wrapper. */
 export interface FeatureFlagsAdminProviderProps {
   /** Shared feature flags admin client instance for the React tree. */
-  client: FeatureFlagsAdminClient;
+  client: ABTestingClient;
   /** React children that should receive the admin client through context. */
   children: ReactNode;
 }
@@ -58,7 +61,7 @@ export function FeatureFlagsAdminProvider({
   children,
 }: FeatureFlagsAdminProviderProps): ReactElement {
   return createElement(
-    FeatureFlagsAdminClientContext.Provider,
+    ABTestingClientContext.Provider,
     { value: client },
     children,
   );
@@ -70,7 +73,7 @@ export function FeatureFlagsAdminProvider({
  * Throws when used outside `FeatureFlagsAdminProvider`.
  */
 export function useFeatureFlagsAdminClient(): FeatureFlagsAdminClient {
-  const client = useContext(FeatureFlagsAdminClientContext);
+  const client = useContext(ABTestingClientContext);
 
   if (client === null) {
     throw new Error(

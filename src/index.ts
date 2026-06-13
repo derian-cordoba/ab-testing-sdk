@@ -1,8 +1,9 @@
-export { createABClient, createABClientFromEnv } from "./application/factories/create-ab-client.js";
 export {
-  createFeatureFlagsAdminClient,
-  createFeatureFlagsAdminClientFromEnv,
-} from "./application/factories/create-feature-flags-admin-client.js";
+  createABClient,
+  createABClientFromEnv,
+  createClient,
+  createClientFromEnv,
+} from "./application/factories/create-ab-client.js";
 export {
   ABTestingError,
   ABTestingFetchError,
@@ -38,6 +39,11 @@ export type {
   SetFeatureFlagRolloutParams,
 } from "./domain/contracts/feature-flags-admin-client.js";
 export type {
+  ABTestingClient,
+  ABTestingClientOptions,
+} from "./domain/contracts/ab-testing-client.js";
+export type {
+  ABTestingClientEnvOptions,
   DotenvLoadOptions,
   DotenvLoadResult,
   EnvServiceOptions,

@@ -2,24 +2,25 @@ import { inject } from "vue";
 import type { App, InjectionKey } from "vue";
 import type { ABClient } from "../../domain/contracts/ab-client.js";
 import type { FeatureFlagsAdminClient } from "../../domain/contracts/feature-flags-admin-client.js";
+import type { ABTestingClient } from "../../domain/contracts/ab-testing-client.js";
 
 /** Injection key used to store the SDK client in the Vue app container. */
-export const ABClientKey = Symbol("ABClient") as InjectionKey<ABClient>;
+export const ABClientKey = Symbol("ABClient") as InjectionKey<ABTestingClient>;
 /** Injection key used to store the feature flags admin client in the Vue app container. */
 export const FeatureFlagsAdminClientKey = Symbol(
   "FeatureFlagsAdminClient",
-) as InjectionKey<FeatureFlagsAdminClient>;
+) as InjectionKey<ABTestingClient>;
 
 /** Options accepted by the Vue installer helper. */
 export interface InstallABTestingOptions {
   /** Shared SDK client instance for the Vue application. */
-  client: ABClient;
+  client: ABTestingClient;
 }
 
 /** Options accepted by the Vue feature flags admin installer helper. */
 export interface InstallFeatureFlagsAdminOptions {
   /** Shared feature flags admin client instance for the Vue application. */
-  client: FeatureFlagsAdminClient;
+  client: ABTestingClient;
 }
 
 /**

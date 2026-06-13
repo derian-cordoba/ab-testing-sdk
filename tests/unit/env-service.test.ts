@@ -6,10 +6,6 @@ import {
   createABClient,
   createABClientFromEnv,
 } from "../../src/application/factories/create-ab-client.js";
-import {
-  createFeatureFlagsAdminClient,
-  createFeatureFlagsAdminClientFromEnv,
-} from "../../src/application/factories/create-feature-flags-admin-client.js";
 import { configureDotenv, EnvService } from "../../src/infrastructure/config/env-service.js";
 
 afterEach(async () => {
@@ -21,7 +17,7 @@ describe("EnvService", () => {
     const service = EnvService.fromSource({});
 
     expect(service.loadConfig()).toEqual({
-      endpoint: "/api/v1/ab-testing/assignments",
+      assignmentsEndpoint: "/api/v1/ab-testing/assignments",
       featureFlagsEndpoint: "/api/v1/ab-testing/feature-flags",
       acceptHeader: "application/vnd.ab-testing.v1+json",
       metaName: "ab-testing:assignments",
@@ -35,7 +31,7 @@ describe("EnvService", () => {
       AB_TESTING_ASSIGNMENTS_PATH: "api/v1/ab-testing/assignments",
     });
 
-    expect(service.loadConfig().endpoint).toBe(
+    expect(service.loadConfig().assignmentsEndpoint).toBe(
       "https://example.test/api/v1/ab-testing/assignments",
     );
   });
@@ -54,7 +50,7 @@ describe("EnvService", () => {
     );
 
     expect(service.loadConfig()).toEqual({
-      endpoint: "https://frontend.test/assignments",
+      assignmentsEndpoint: "https://frontend.test/assignments",
       featureFlagsEndpoint: "https://frontend.test/api/v1/ab-testing/feature-flags",
       acceptHeader: "application/vnd.custom+json",
       metaName: "custom:assignments",
@@ -123,7 +119,7 @@ describe("EnvService", () => {
   });
 
   it("creates a feature flags admin client from environment-derived configuration", async () => {
-    const client = createFeatureFlagsAdminClientFromEnv(
+    const client = createABClientFromEnv(
       {
         source: {
           AB_TESTING_API_BASE_URL: "https://api.example.test",
@@ -133,6 +129,7 @@ describe("EnvService", () => {
         prefix: "AB_TESTING_",
       },
       {
+        featureFlagsEndpoint: "https://api.example.test/ops-flags",
         fetchImpl: async (input, init) => {
           expect(input).toBe("https://api.example.test/ops-flags/dark-mode");
           expect(init).toEqual({
@@ -244,7 +241,7 @@ describe("EnvService", () => {
 
     try {
       const client = createABClient({
-        endpoint: "https://explicit.example.test/assignments",
+        assignmentsEndpoint: "https://explicit.example.test/assignments",
         acceptHeader: "application/vnd.explicit+json",
         fetchImpl: async (input, init) => {
           expect(input).toBe(
@@ -299,7 +296,7 @@ describe("EnvService", () => {
     process.env.AB_TESTING_ACCEPT_HEADER = "application/vnd.automatic+json";
 
     try {
-      const client = createFeatureFlagsAdminClient({
+      const client = createABClient({
         fetchImpl: async (input, init) => {
           expect(input).toBe(
             "https://automatic.example.test/feature-flags-admin?is_enabled=1",

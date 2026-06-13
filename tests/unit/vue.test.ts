@@ -2,8 +2,9 @@
 import { defineComponent, h } from "vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import { createABClient } from "../../src/application/factories/create-ab-client.js";
-import { createFeatureFlagsAdminClient } from "../../src/application/factories/create-feature-flags-admin-client.js";
+import {
+  createClient,
+} from "../../src/application/factories/create-ab-client.js";
 import {
   ABClientKey,
   FeatureFlagsAdminClientKey,
@@ -21,7 +22,7 @@ describe("Vue adapter", () => {
         provided.push({ key: key as unknown as symbol, value });
       },
     };
-    const client = createABClient();
+    const client = createClient();
 
     installABTesting(app as never, { client });
 
@@ -32,7 +33,7 @@ describe("Vue adapter", () => {
   });
 
   it("resolves the client from Vue injection context", () => {
-    const client = createABClient();
+    const client = createClient();
 
     const Consumer = defineComponent({
       setup() {
@@ -60,7 +61,7 @@ describe("Vue adapter", () => {
         provided.push({ key: key as unknown as symbol, value });
       },
     };
-    const client = createFeatureFlagsAdminClient();
+    const client = createClient();
 
     installFeatureFlagsAdmin(app as never, { client });
 
@@ -71,7 +72,7 @@ describe("Vue adapter", () => {
   });
 
   it("resolves the feature flags admin client from Vue injection context", () => {
-    const client = createFeatureFlagsAdminClient();
+    const client = createClient();
 
     const Consumer = defineComponent({
       setup() {

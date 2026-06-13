@@ -3,6 +3,7 @@ import type {
   UnitIdentity,
 } from "../../domain/contracts/ab-client.js";
 import type {
+  ABTestingClientEnvOptions,
   DotenvLoadOptions,
   DotenvLoadResult,
   EnvServiceOptions,
@@ -46,7 +47,10 @@ export class EnvService {
    */
   public loadConfig(): SDKEnvironmentConfig {
     return {
-      endpoint: this.resolveEndpoint("ASSIGNMENTS_PATH", DEFAULT_ASSIGNMENTS_ENDPOINT),
+      assignmentsEndpoint: this.resolveEndpoint(
+        "ASSIGNMENTS_PATH",
+        DEFAULT_ASSIGNMENTS_ENDPOINT,
+      ),
       featureFlagsEndpoint: this.resolveEndpoint(
         "FEATURE_FLAGS_PATH",
         DEFAULT_FEATURE_FLAGS_ENDPOINT,
@@ -61,24 +65,57 @@ export class EnvService {
    * Builds `createABClient()` options from the current environment.
    */
   public loadClientOptions(): ABClientOptions {
-    const config = this.loadConfig();
+    const options = this.loadABTestingClientOptions();
+    const clientOptions: ABClientOptions = {};
 
-    return {
-      endpoint: config.endpoint,
-      acceptHeader: config.acceptHeader,
-      metaName: config.metaName,
-    };
+    if (options.assignmentsEndpoint !== undefined) {
+      clientOptions.endpoint = options.assignmentsEndpoint;
+    }
+
+    if (options.acceptHeader !== undefined) {
+      clientOptions.acceptHeader = options.acceptHeader;
+    }
+
+    if (options.metaName !== undefined) {
+      clientOptions.metaName = options.metaName;
+    }
+
+    return clientOptions;
   }
 
   /**
    * Builds feature flags admin client options from the current environment.
    */
   public loadFeatureFlagsAdminClientOptions(): FeatureFlagsAdminClientEnvOptions {
+    const options = this.loadABTestingClientOptions();
+    const clientOptions: FeatureFlagsAdminClientEnvOptions = {};
+
+    if (options.featureFlagsEndpoint !== undefined) {
+      clientOptions.endpoint = options.featureFlagsEndpoint;
+    }
+
+    if (options.acceptHeader !== undefined) {
+      clientOptions.acceptHeader = options.acceptHeader;
+    }
+
+    if (options.contentType !== undefined) {
+      clientOptions.contentType = options.contentType;
+    }
+
+    return clientOptions;
+  }
+
+  /**
+   * Builds unified SDK client options from the current environment.
+   */
+  public loadABTestingClientOptions(): ABTestingClientEnvOptions {
     const config = this.loadConfig();
 
     return {
-      endpoint: config.featureFlagsEndpoint,
+      assignmentsEndpoint: config.assignmentsEndpoint,
+      featureFlagsEndpoint: config.featureFlagsEndpoint,
       acceptHeader: config.acceptHeader,
+      metaName: config.metaName,
       contentType: DEFAULT_JSON_CONTENT_TYPE,
     };
   }

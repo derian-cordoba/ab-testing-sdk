@@ -2,8 +2,9 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { createABClient } from "../../src/application/factories/create-ab-client.js";
-import { createFeatureFlagsAdminClient } from "../../src/application/factories/create-feature-flags-admin-client.js";
+import {
+  createClient,
+} from "../../src/application/factories/create-ab-client.js";
 import {
   ABProvider,
   FeatureFlagsAdminProvider,
@@ -13,7 +14,7 @@ import {
 
 describe("React adapter", () => {
   it("provides the client through ABProvider", () => {
-    const client = createABClient();
+    const client = createClient();
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <ABProvider client={client}>{children}</ABProvider>
@@ -31,7 +32,7 @@ describe("React adapter", () => {
   });
 
   it("provides the feature flags admin client through FeatureFlagsAdminProvider", () => {
-    const client = createFeatureFlagsAdminClient();
+    const client = createClient();
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <FeatureFlagsAdminProvider client={client}>

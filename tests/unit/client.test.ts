@@ -68,7 +68,7 @@ describe("DefaultABClient", () => {
 
   it("hydrateFromApi fetches, normalizes, and stores state", async () => {
     const client = createABClient({
-      endpoint: "/api/v1/ab-testing/assignments",
+      assignmentsEndpoint: "/api/v1/ab-testing/assignments",
       fetchImpl: async (input, init) => {
         expect(input).toBe(
           "/api/v1/ab-testing/assignments?unit_type=user&unit_key=99",

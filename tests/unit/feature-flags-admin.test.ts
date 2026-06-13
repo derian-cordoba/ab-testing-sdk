@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFeatureFlagsAdminClient } from "../../src/application/factories/create-feature-flags-admin-client.js";
+import { createABClient } from "../../src/application/factories/create-ab-client.js";
 import { ABTestingFetchError, ABTestingParseError } from "../../src/domain/errors/ab-testing-error.js";
 import { normalizeFeatureFlagCollectionDocument } from "../../src/infrastructure/http/normalize-feature-flag-collection-document.js";
 import { normalizeFeatureFlagDocument } from "../../src/infrastructure/http/normalize-feature-flag-document.js";
@@ -120,8 +120,8 @@ describe("feature flags admin helpers", () => {
 describe("DefaultFeatureFlagsAdminClient", () => {
   it("supports the feature flag lifecycle and CRUD endpoints", async () => {
     const calls: { input: RequestInfo | URL; init: RequestInit | undefined }[] = [];
-    const client = createFeatureFlagsAdminClient({
-      endpoint: "/api/v1/ab-testing/feature-flags",
+    const client = createABClient({
+      featureFlagsEndpoint: "/api/v1/ab-testing/feature-flags",
       fetchImpl: async (input, init) => {
         calls.push({ input, init });
         const url = String(input);
@@ -238,7 +238,7 @@ describe("DefaultFeatureFlagsAdminClient", () => {
   });
 
   it("throws on failed feature flag admin requests", async () => {
-    const client = createFeatureFlagsAdminClient({
+    const client = createABClient({
       fetchImpl: async () => new Response("nope", { status: 500 }),
     });
 

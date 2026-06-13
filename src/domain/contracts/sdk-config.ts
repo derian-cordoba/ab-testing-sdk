@@ -1,3 +1,4 @@
+import type { ABTestingClientOptions } from "./ab-testing-client.js";
 import type { UnitIdentity } from "./ab-client.js";
 import type { FeatureFlagsAdminClientOptions } from "./feature-flags-admin-client.js";
 
@@ -34,7 +35,7 @@ export interface EnvServiceOptions {
  */
 export interface SDKEnvironmentConfig {
   /** Fully qualified or relative assignments endpoint URL. */
-  endpoint: string;
+  assignmentsEndpoint: string;
   /** Fully qualified or relative feature flags admin endpoint URL. */
   featureFlagsEndpoint: string;
   /** Accept header sent to the assignments API. */
@@ -72,3 +73,8 @@ export interface DotenvLoadResult {
  */
 export interface FeatureFlagsAdminClientEnvOptions
   extends FeatureFlagsAdminClientOptions {}
+
+/**
+ * Env-derived defaults for the unified SDK client.
+ */
+export interface ABTestingClientEnvOptions extends ABTestingClientOptions {}

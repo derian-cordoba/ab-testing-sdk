@@ -38,7 +38,7 @@ If you are using the Laravel package from this same ecosystem, this SDK should b
 - reads the assignment the server already resolved
 - normalizes DOM and HTTP payloads into one in-memory shape
 - avoids client-side re-bucketing by default
-- exposes a small client API for variant lookup
+- exposes one shared client for runtime hydration and feature flag management
 - provides optional React and Vue integration helpers
 
 ## What this SDK does not do
@@ -164,7 +164,7 @@ Use this when the page cannot hydrate from HTML or when the client needs to fetc
 import { createABClient } from "@derian-cordoba/ab-testing-sdk";
 
 const client = createABClient({
-  endpoint: "/api/v1/ab-testing/assignments",
+  assignmentsEndpoint: "/api/v1/ab-testing/assignments",
   acceptHeader: "application/vnd.ab-testing.v1+json",
 });
 
@@ -184,7 +184,7 @@ Accept: application/vnd.ab-testing.v1+json
 
 ### `createABClient(options)`
 
-Creates the default in-memory SDK client.
+Creates the unified SDK client.
 
 This factory now reads env-derived defaults automatically through `EnvService`, then applies any explicit `options` you pass.
 
@@ -198,13 +198,19 @@ Example with an explicit override:
 
 ```ts
 const client = createABClient({
-  endpoint: "https://api.example.test/api/v1/ab-testing/assignments",
+  assignmentsEndpoint: "https://api.example.test/api/v1/ab-testing/assignments",
+  featureFlagsEndpoint: "https://api.example.test/api/v1/ab-testing/feature-flags",
 });
 ```
 
+The same instance exposes:
+
+- runtime assignment methods such as `hydrateFromMeta()`, `hydrateFromApi()`, and `getVariant()`
+- feature flags admin methods such as `listFeatureFlags()`, `enableFeatureFlag()`, and `setFeatureFlagRollout()`
+
 ### `createABClientFromEnv(envOptions?, clientOptions?)`
 
-Creates the default client from a custom env source or prefix.
+Creates the unified client from a custom env source or prefix.
 
 This is useful when your runtime does not use `process.env` directly, such as Vite with `import.meta.env`.
 
@@ -242,7 +248,7 @@ const env = EnvService.fromSource(import.meta.env, "VITE_AB_");
 
 The resolved config now includes both:
 
-- `endpoint`: assignments endpoint used by the runtime client
+- `assignmentsEndpoint`: assignments endpoint used by the unified client
 - `featureFlagsEndpoint`: feature flags admin endpoint used by the management client
 
 ### `configureDotenv(options?)`
@@ -262,6 +268,15 @@ await configureDotenv();
 const client = createABClientFromEnv();
 ```
 
+### Compatibility factories
+
+The SDK exports:
+
+- `createABClient(...)`
+- `createABClientFromEnv(...)`
+
+These are the preferred entrypoints going forward.
+
 ## Feature flags admin API
 
 The SDK now includes a dedicated management client for the server-side feature
@@ -277,35 +292,9 @@ This client is intended for:
 It is not the runtime flag-evaluation client for end-user rendering. Runtime
 flag hydration should still come from a server-authoritative evaluated payload.
 
-### `createFeatureFlagsAdminClient(options)`
-
-Creates the default feature flags admin client.
-
-Like `createABClient()`, this factory auto-loads env-derived defaults and then
-applies any explicit user overrides.
-
-```ts
-import { createFeatureFlagsAdminClient } from "@derian-cordoba/ab-testing-sdk";
-
-const client = createFeatureFlagsAdminClient();
-```
-
-### `createFeatureFlagsAdminClientFromEnv(envOptions?, clientOptions?)`
-
-Creates the feature flags admin client from a custom env source or prefix.
-
-```ts
-import { createFeatureFlagsAdminClientFromEnv } from "@derian-cordoba/ab-testing-sdk";
-
-const client = createFeatureFlagsAdminClientFromEnv({
-  source: import.meta.env,
-  prefix: "VITE_AB_",
-});
-```
-
 ### Admin client methods
 
-The `FeatureFlagsAdminClient` instance exposes:
+The unified `ABTestingClient` instance exposes:
 
 - `listFeatureFlags(params?)`
 - `getFeatureFlag(key)`
@@ -322,10 +311,10 @@ The `FeatureFlagsAdminClient` instance exposes:
 ### Example
 
 ```ts
-import { createFeatureFlagsAdminClient } from "@derian-cordoba/ab-testing-sdk";
+import { createABClient } from "@derian-cordoba/ab-testing-sdk";
 
-const client = createFeatureFlagsAdminClient({
-  endpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
+const client = createABClient({
+  featureFlagsEndpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
 });
 
 await client.enableFeatureFlag("dark-mode");
@@ -358,14 +347,14 @@ Example:
 
 ```tsx
 import React, { useEffect } from "react";
-import { createFeatureFlagsAdminClient } from "@derian-cordoba/ab-testing-sdk";
+import { createABClient } from "@derian-cordoba/ab-testing-sdk";
 import {
   FeatureFlagsAdminProvider,
   useFeatureFlagsAdminClient,
 } from "@derian-cordoba/ab-testing-sdk/react";
 
-const adminClient = createFeatureFlagsAdminClient({
-  endpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
+const client = createABClient({
+  featureFlagsEndpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
 });
 
 function FeatureFlagsPanel() {
@@ -380,7 +369,7 @@ function FeatureFlagsPanel() {
 
 export function App() {
   return (
-    <FeatureFlagsAdminProvider client={adminClient}>
+    <FeatureFlagsAdminProvider client={client}>
       <FeatureFlagsPanel />
     </FeatureFlagsAdminProvider>
   );
@@ -408,14 +397,14 @@ Example:
 
 ```ts
 import { createApp, defineComponent, h, onMounted } from "vue";
-import { createFeatureFlagsAdminClient } from "@derian-cordoba/ab-testing-sdk";
+import { createABClient } from "@derian-cordoba/ab-testing-sdk";
 import {
   installFeatureFlagsAdmin,
   useFeatureFlagsAdminClient,
 } from "@derian-cordoba/ab-testing-sdk/vue";
 
-const adminClient = createFeatureFlagsAdminClient({
-  endpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
+const client = createABClient({
+  featureFlagsEndpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
 });
 
 const Root = defineComponent({
@@ -431,7 +420,7 @@ const Root = defineComponent({
 });
 
 const app = createApp(Root);
-installFeatureFlagsAdmin(app, { client: adminClient });
+installFeatureFlagsAdmin(app, { client });
 app.mount("#app");
 ```
 
