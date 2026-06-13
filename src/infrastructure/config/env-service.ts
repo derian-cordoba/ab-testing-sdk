@@ -34,8 +34,6 @@ export class EnvService {
   public constructor(options: EnvServiceOptions = {}) {
     this.source = options.source ?? EnvService.readProcessEnv();
     this.prefix = options.prefix ?? DEFAULT_ENV_PREFIX;
-
-    console.log({ source: this.source });
   }
 
   /**
