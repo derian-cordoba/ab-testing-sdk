@@ -1,4 +1,5 @@
 import type { UnitIdentity } from "./ab-client.js";
+import type { FeatureFlagsAdminClientOptions } from "./feature-flags-admin-client.js";
 
 /**
  * Flat environment source consumed by the SDK configuration service.
@@ -34,6 +35,8 @@ export interface EnvServiceOptions {
 export interface SDKEnvironmentConfig {
   /** Fully qualified or relative assignments endpoint URL. */
   endpoint: string;
+  /** Fully qualified or relative feature flags admin endpoint URL. */
+  featureFlagsEndpoint: string;
   /** Accept header sent to the assignments API. */
   acceptHeader: string;
   /** DOM meta tag name used for SSR hydration. */
@@ -63,3 +66,9 @@ export interface DotenvLoadResult {
   /** Variables parsed from the dotenv file. */
   parsed: EnvSource;
 }
+
+/**
+ * Env-derived defaults for the feature flags admin client.
+ */
+export interface FeatureFlagsAdminClientEnvOptions
+  extends FeatureFlagsAdminClientOptions {}

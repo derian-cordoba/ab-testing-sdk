@@ -7,6 +7,7 @@ import type {
   DotenvLoadResult,
   EnvServiceOptions,
   EnvSource,
+  FeatureFlagsAdminClientEnvOptions,
   SDKEnvironmentConfig,
 } from "../../domain/contracts/sdk-config.js";
 import { DEFAULT_META_NAME } from "../browser/read-assignments-from-meta.js";
@@ -14,6 +15,10 @@ import {
   DEFAULT_ACCEPT_HEADER,
   DEFAULT_ASSIGNMENTS_ENDPOINT,
 } from "../http/api-config.js";
+import {
+  DEFAULT_FEATURE_FLAGS_ENDPOINT,
+  DEFAULT_JSON_CONTENT_TYPE,
+} from "../http/feature-flags-api-config.js";
 
 const DEFAULT_ENV_PREFIX = "AB_TESTING_";
 
@@ -41,7 +46,11 @@ export class EnvService {
    */
   public loadConfig(): SDKEnvironmentConfig {
     return {
-      endpoint: this.resolveEndpoint(),
+      endpoint: this.resolveEndpoint("ASSIGNMENTS_PATH", DEFAULT_ASSIGNMENTS_ENDPOINT),
+      featureFlagsEndpoint: this.resolveEndpoint(
+        "FEATURE_FLAGS_PATH",
+        DEFAULT_FEATURE_FLAGS_ENDPOINT,
+      ),
       acceptHeader: this.readValue("ACCEPT_HEADER") ?? DEFAULT_ACCEPT_HEADER,
       metaName: this.readValue("META_NAME") ?? DEFAULT_META_NAME,
       unit: this.loadUnitIdentity(),
@@ -58,6 +67,19 @@ export class EnvService {
       endpoint: config.endpoint,
       acceptHeader: config.acceptHeader,
       metaName: config.metaName,
+    };
+  }
+
+  /**
+   * Builds feature flags admin client options from the current environment.
+   */
+  public loadFeatureFlagsAdminClientOptions(): FeatureFlagsAdminClientEnvOptions {
+    const config = this.loadConfig();
+
+    return {
+      endpoint: config.featureFlagsEndpoint,
+      acceptHeader: config.acceptHeader,
+      contentType: DEFAULT_JSON_CONTENT_TYPE,
     };
   }
 
@@ -116,20 +138,19 @@ export class EnvService {
     return new EnvService(options);
   }
 
-  private resolveEndpoint(): string {
+  private resolveEndpoint(pathKey: string, fallbackPath: string): string {
     const apiBaseUrl = this.trimTrailingSlashes(this.readValue("API_BASE_URL"));
-    const assignmentsPath =
-      this.readValue("ASSIGNMENTS_PATH") ?? DEFAULT_ASSIGNMENTS_ENDPOINT;
+    const path = this.readValue(pathKey) ?? fallbackPath;
 
     if (apiBaseUrl === undefined) {
-      return assignmentsPath;
+      return path;
     }
 
-    if (/^https?:\/\//u.test(assignmentsPath)) {
-      return assignmentsPath;
+    if (/^https?:\/\//u.test(path)) {
+      return path;
     }
 
-    return `${apiBaseUrl}${this.normalizePath(assignmentsPath)}`;
+    return `${apiBaseUrl}${this.normalizePath(path)}`;
   }
 
   private readValue(key: string): string | undefined {

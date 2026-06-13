@@ -74,6 +74,7 @@ The root package includes a [`.env.example`](/Users/deriancordoba/Developer/pers
 ```dotenv
 AB_TESTING_API_BASE_URL=
 AB_TESTING_ASSIGNMENTS_PATH=/api/v1/ab-testing/assignments
+AB_TESTING_FEATURE_FLAGS_PATH=/api/v1/ab-testing/feature-flags
 AB_TESTING_ACCEPT_HEADER=application/vnd.ab-testing.v1+json
 AB_TESTING_META_NAME=ab-testing:assignments
 AB_TESTING_UNIT_TYPE=user
@@ -86,6 +87,7 @@ These variables are used by the SDK `EnvService` and the default client factory.
 
 - `AB_TESTING_API_BASE_URL`: optional backend origin such as `http://localhost:8765`
 - `AB_TESTING_ASSIGNMENTS_PATH`: assignments endpoint path or full URL
+- `AB_TESTING_FEATURE_FLAGS_PATH`: feature flags admin endpoint path or full URL
 - `AB_TESTING_ACCEPT_HEADER`: media type sent to the assignments API
 - `AB_TESTING_META_NAME`: SSR meta tag name used by `hydrateFromMeta()`
 - `AB_TESTING_UNIT_TYPE`: optional fallback unit type for application code
@@ -238,6 +240,11 @@ Use `fromSource()` when your host framework exposes env variables through a cust
 const env = EnvService.fromSource(import.meta.env, "VITE_AB_");
 ```
 
+The resolved config now includes both:
+
+- `endpoint`: assignments endpoint used by the runtime client
+- `featureFlagsEndpoint`: feature flags admin endpoint used by the management client
+
 ### `configureDotenv(options?)`
 
 Loads env variables from a dotenv file for Node.js or SSR entrypoints.
@@ -253,6 +260,86 @@ import {
 await configureDotenv();
 
 const client = createABClientFromEnv();
+```
+
+## Feature flags admin API
+
+The SDK now includes a dedicated management client for the server-side feature
+flags API under `/api/v1/ab-testing/feature-flags`.
+
+This client is intended for:
+
+- admin dashboards
+- internal tooling
+- CI/CD operational controls
+- rollout and kill-switch automation
+
+It is not the runtime flag-evaluation client for end-user rendering. Runtime
+flag hydration should still come from a server-authoritative evaluated payload.
+
+### `createFeatureFlagsAdminClient(options)`
+
+Creates the default feature flags admin client.
+
+Like `createABClient()`, this factory auto-loads env-derived defaults and then
+applies any explicit user overrides.
+
+```ts
+import { createFeatureFlagsAdminClient } from "@derian-cordoba/ab-testing-sdk";
+
+const client = createFeatureFlagsAdminClient();
+```
+
+### `createFeatureFlagsAdminClientFromEnv(envOptions?, clientOptions?)`
+
+Creates the feature flags admin client from a custom env source or prefix.
+
+```ts
+import { createFeatureFlagsAdminClientFromEnv } from "@derian-cordoba/ab-testing-sdk";
+
+const client = createFeatureFlagsAdminClientFromEnv({
+  source: import.meta.env,
+  prefix: "VITE_AB_",
+});
+```
+
+### Admin client methods
+
+The `FeatureFlagsAdminClient` instance exposes:
+
+- `listFeatureFlags(params?)`
+- `getFeatureFlag(key)`
+- `createFeatureFlag(params)`
+- `deleteFeatureFlag(key)`
+- `enableFeatureFlag(key)`
+- `disableFeatureFlag(key)`
+- `setFeatureFlagRollout(key, params)`
+- `activateFeatureFlagKillSwitch(key)`
+- `deactivateFeatureFlagKillSwitch(key)`
+- `setFeatureFlagConditions(key, params)`
+- `clearFeatureFlagConditions(key)`
+
+### Example
+
+```ts
+import { createFeatureFlagsAdminClient } from "@derian-cordoba/ab-testing-sdk";
+
+const client = createFeatureFlagsAdminClient({
+  endpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
+});
+
+await client.enableFeatureFlag("dark-mode");
+
+await client.setFeatureFlagRollout("dark-mode", {
+  rolloutPercentage: 25,
+});
+
+await client.setFeatureFlagConditions("dark-mode", {
+  conditions: [
+    { attribute: "plan", operator: "equals", expected: "pro" },
+  ],
+  conditionsLogic: "all",
+});
 ```
 
 ### `readAssignmentsFromMeta(name?)`

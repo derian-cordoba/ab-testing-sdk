@@ -6,6 +6,10 @@ import {
   createABClient,
   createABClientFromEnv,
 } from "../../src/application/factories/create-ab-client.js";
+import {
+  createFeatureFlagsAdminClient,
+  createFeatureFlagsAdminClientFromEnv,
+} from "../../src/application/factories/create-feature-flags-admin-client.js";
 import { configureDotenv, EnvService } from "../../src/infrastructure/config/env-service.js";
 
 afterEach(async () => {
@@ -18,6 +22,7 @@ describe("EnvService", () => {
 
     expect(service.loadConfig()).toEqual({
       endpoint: "/api/v1/ab-testing/assignments",
+      featureFlagsEndpoint: "/api/v1/ab-testing/feature-flags",
       acceptHeader: "application/vnd.ab-testing.v1+json",
       metaName: "ab-testing:assignments",
       unit: null,
@@ -50,6 +55,7 @@ describe("EnvService", () => {
 
     expect(service.loadConfig()).toEqual({
       endpoint: "https://frontend.test/assignments",
+      featureFlagsEndpoint: "https://frontend.test/api/v1/ab-testing/feature-flags",
       acceptHeader: "application/vnd.custom+json",
       metaName: "custom:assignments",
       unit: {
@@ -114,6 +120,61 @@ describe("EnvService", () => {
       assignments: { checkout: "green" },
       source: "api",
     });
+  });
+
+  it("creates a feature flags admin client from environment-derived configuration", async () => {
+    const client = createFeatureFlagsAdminClientFromEnv(
+      {
+        source: {
+          AB_TESTING_API_BASE_URL: "https://api.example.test",
+          AB_TESTING_FEATURE_FLAGS_PATH: "/ops-flags",
+          AB_TESTING_ACCEPT_HEADER: "application/vnd.custom+json",
+        },
+        prefix: "AB_TESTING_",
+      },
+      {
+        fetchImpl: async (input, init) => {
+          expect(input).toBe("https://api.example.test/ops-flags/dark-mode");
+          expect(init).toEqual({
+            method: "GET",
+            headers: {
+              Accept: "application/vnd.custom+json",
+            },
+          });
+
+          return new Response(
+            JSON.stringify({
+              data: {
+                id: "dark-mode",
+                type: "feature-flags",
+                attributes: {
+                  is_enabled: true,
+                  rollout_percentage: 25,
+                  conditions: [],
+                  conditions_logic: null,
+                  is_killed: false,
+                  killed_at: null,
+                  last_evaluated_at: null,
+                  created_at: null,
+                  updated_at: null,
+                },
+              },
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+              },
+            },
+          );
+        },
+      },
+    );
+
+    const flag = await client.getFeatureFlag("dark-mode");
+
+    expect(flag.key).toBe("dark-mode");
+    expect(flag.rolloutPercentage).toBe(25);
   });
 
   it("auto-configures createABClient from process env defaults", async () => {
@@ -225,6 +286,52 @@ describe("EnvService", () => {
       expect(hydrated.assignments).toEqual({ hero: "explicit" });
     } finally {
       restoreEnvVariable("AB_TESTING_API_BASE_URL", previousBaseUrl);
+    }
+  });
+
+  it("auto-configures the feature flags admin client from process env defaults", async () => {
+    const previousBaseUrl = process.env.AB_TESTING_API_BASE_URL;
+    const previousPath = process.env.AB_TESTING_FEATURE_FLAGS_PATH;
+    const previousAccept = process.env.AB_TESTING_ACCEPT_HEADER;
+
+    process.env.AB_TESTING_API_BASE_URL = "https://automatic.example.test";
+    process.env.AB_TESTING_FEATURE_FLAGS_PATH = "/feature-flags-admin";
+    process.env.AB_TESTING_ACCEPT_HEADER = "application/vnd.automatic+json";
+
+    try {
+      const client = createFeatureFlagsAdminClient({
+        fetchImpl: async (input, init) => {
+          expect(input).toBe(
+            "https://automatic.example.test/feature-flags-admin?is_enabled=1",
+          );
+          expect(init).toEqual({
+            method: "GET",
+            headers: {
+              Accept: "application/vnd.automatic+json",
+            },
+          });
+
+          return new Response(
+            JSON.stringify({
+              data: [],
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+              },
+            },
+          );
+        },
+      });
+
+      const collection = await client.listFeatureFlags({ isEnabled: true });
+
+      expect(collection.items).toEqual([]);
+    } finally {
+      restoreEnvVariable("AB_TESTING_API_BASE_URL", previousBaseUrl);
+      restoreEnvVariable("AB_TESTING_FEATURE_FLAGS_PATH", previousPath);
+      restoreEnvVariable("AB_TESTING_ACCEPT_HEADER", previousAccept);
     }
   });
 
