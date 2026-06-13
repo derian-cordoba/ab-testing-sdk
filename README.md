@@ -199,7 +199,8 @@ Example with an explicit override:
 ```ts
 const client = createABClient({
   assignmentsEndpoint: "https://api.example.test/api/v1/ab-testing/assignments",
-  featureFlagsEndpoint: "https://api.example.test/api/v1/ab-testing/feature-flags",
+  featureFlagsEndpoint:
+    "https://api.example.test/api/v1/ab-testing/feature-flags",
 });
 ```
 
@@ -207,6 +208,26 @@ The same instance exposes:
 
 - runtime assignment methods such as `hydrateFromMeta()`, `hydrateFromApi()`, and `getVariant()`
 - feature flags admin methods such as `listFeatureFlags()`, `enableFeatureFlag()`, and `setFeatureFlagRollout()`
+- cache control through `clearCache()` when the optional in-memory cache is enabled
+
+Optional in-memory cache example:
+
+```ts
+const client = createABClient({
+  cache: {
+    ttlMs: 60_000,
+    assignments: { enabled: true },
+    featureFlags: { enabled: true },
+  },
+});
+```
+
+Cache behavior:
+
+- disabled by default
+- enabled only when `cache: true` or `cache: { ... }` is passed
+- assignment cache keys are scoped by `unitType` and `unitKey`
+- feature flag read caches are invalidated automatically after feature flag write operations
 
 ### `createABClientFromEnv(envOptions?, clientOptions?)`
 
@@ -224,7 +245,7 @@ const client = createABClientFromEnv(
   },
   {
     initial: null,
-  },
+  }
 );
 ```
 
@@ -324,21 +345,23 @@ await client.setFeatureFlagRollout("dark-mode", {
 });
 
 await client.setFeatureFlagConditions("dark-mode", {
-  conditions: [
-    { attribute: "plan", operator: "equals", expected: "pro" },
-  ],
+  conditions: [{ attribute: "plan", operator: "equals", expected: "pro" }],
   conditionsLogic: "all",
 });
 ```
 
 ### React integration
 
-The React adapter now includes a dedicated provider and hook for the feature
-flags admin client.
+The React adapter uses the unified `ABTestingClient` through one shared
+provider and exposes cache-aware hooks for assignments and feature flag reads.
 
 ```ts
 import {
-  FeatureFlagsAdminProvider,
+  ABProvider,
+  useABClient,
+  useAssignments,
+  useFeatureFlag,
+  useFeatureFlags,
   useFeatureFlagsAdminClient,
 } from "@derian-cordoba/ab-testing-sdk/react";
 ```
@@ -346,49 +369,73 @@ import {
 Example:
 
 ```tsx
-import React, { useEffect } from "react";
+import React from "react";
 import { createABClient } from "@derian-cordoba/ab-testing-sdk";
 import {
-  FeatureFlagsAdminProvider,
-  useFeatureFlagsAdminClient,
+  ABProvider,
+  useAssignments,
+  useFeatureFlags,
 } from "@derian-cordoba/ab-testing-sdk/react";
 
 const client = createABClient({
+  assignmentsEndpoint: "http://localhost:8765/api/v1/ab-testing/assignments",
   featureFlagsEndpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
+  cache: {
+    assignments: { enabled: true, ttlMs: 60_000 },
+    featureFlags: { enabled: true, ttlMs: 60_000 },
+  },
 });
 
-function FeatureFlagsPanel() {
-  const flags = useFeatureFlagsAdminClient();
+function Dashboard() {
+  const assignments = useAssignments({
+    apiParams: { unitType: "user", unitKey: "42" },
+    hydrateFromApiOnMount: true,
+  });
+  const flags = useFeatureFlags({ loadOnMount: true });
 
-  useEffect(() => {
-    void flags.listFeatureFlags();
-  }, [flags]);
+  if (assignments.isLoading || flags.isLoading) {
+    return <div>Loading</div>;
+  }
 
-  return <div>Feature flags admin ready</div>;
+  return (
+    <div>
+      <pre>{JSON.stringify(assignments.assignments, null, 2)}</pre>
+      <pre>{JSON.stringify(flags.collection?.items ?? [], null, 2)}</pre>
+    </div>
+  );
 }
 
 export function App() {
   return (
-    <FeatureFlagsAdminProvider client={client}>
-      <FeatureFlagsPanel />
-    </FeatureFlagsAdminProvider>
+    <ABProvider client={client}>
+      <Dashboard />
+    </ABProvider>
   );
 }
 ```
 
 Available React helpers:
 
+- `ABProvider`
 - `FeatureFlagsAdminProvider`
+- `useABClient()`
+- `useAssignments()`
+- `useFeatureFlag()`
+- `useFeatureFlags()`
 - `useFeatureFlagsAdminClient()`
 
 ### Vue integration
 
-The Vue adapter also exposes a separate installation path for the feature flags
-admin client.
+The Vue adapter also uses the unified `ABTestingClient` and exposes cache-aware
+composables for assignments and feature flag reads.
 
 ```ts
 import {
-  installFeatureFlagsAdmin,
+  installABTesting,
+  useABClient,
+  useAssignments,
+  useFeatureFlag,
+  useFeatureFlags,
   useFeatureFlagsAdminClient,
 } from "@derian-cordoba/ab-testing-sdk/vue";
 ```
@@ -396,37 +443,59 @@ import {
 Example:
 
 ```ts
-import { createApp, defineComponent, h, onMounted } from "vue";
+import { createApp, defineComponent, h } from "vue";
 import { createABClient } from "@derian-cordoba/ab-testing-sdk";
 import {
-  installFeatureFlagsAdmin,
-  useFeatureFlagsAdminClient,
+  installABTesting,
+  useAssignments,
+  useFeatureFlags,
 } from "@derian-cordoba/ab-testing-sdk/vue";
 
 const client = createABClient({
+  assignmentsEndpoint: "http://localhost:8765/api/v1/ab-testing/assignments",
   featureFlagsEndpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
+  cache: {
+    assignments: { enabled: true, ttlMs: 60_000 },
+    featureFlags: { enabled: true, ttlMs: 60_000 },
+  },
 });
 
 const Root = defineComponent({
   setup() {
-    const flags = useFeatureFlagsAdminClient();
-
-    onMounted(() => {
-      void flags.listFeatureFlags();
+    const assignments = useAssignments({
+      apiParams: { unitType: "user", unitKey: "42" },
+      hydrateFromApiOnMount: true,
     });
+    const flags = useFeatureFlags({ loadOnMount: true });
 
-    return () => h("div", "Feature flags admin ready");
+    return () =>
+      h(
+        "pre",
+        JSON.stringify(
+          {
+            assignments: assignments.assignments.value,
+            flags: flags.collection.value?.items ?? [],
+          },
+          null,
+          2
+        )
+      );
   },
 });
 
 const app = createApp(Root);
-installFeatureFlagsAdmin(app, { client });
+installABTesting(app, { client });
 app.mount("#app");
 ```
 
 Available Vue helpers:
 
+- `installABTesting(app, { client })`
 - `installFeatureFlagsAdmin(app, { client })`
+- `useABClient()`
+- `useAssignments()`
+- `useFeatureFlag()`
+- `useFeatureFlags()`
 - `useFeatureFlagsAdminClient()`
 
 ### `readAssignmentsFromMeta(name?)`
@@ -444,11 +513,14 @@ Useful if you want to bring your own fetch layer.
 ```ts
 import { normalizeAssignmentsDocument } from "@derian-cordoba/ab-testing-sdk";
 
-const response = await fetch("/api/v1/ab-testing/assignments?unit_type=user&unit_key=42", {
-  headers: {
-    Accept: "application/vnd.ab-testing.v1+json",
-  },
-});
+const response = await fetch(
+  "/api/v1/ab-testing/assignments?unit_type=user&unit_key=42",
+  {
+    headers: {
+      Accept: "application/vnd.ab-testing.v1+json",
+    },
+  }
+);
 
 const document = await response.json();
 const hydrated = normalizeAssignmentsDocument(document);
@@ -456,7 +528,7 @@ const hydrated = normalizeAssignmentsDocument(document);
 
 ### Client methods
 
-The `ABClient` instance exposes:
+The unified `ABTestingClient` instance exposes:
 
 - `getVariant(experimentKey)`: returns the variant key or `null`
 - `all()`: returns the full assignment map
@@ -466,11 +538,16 @@ The `ABClient` instance exposes:
 - `replace(assignments)`: replaces the current in-memory state
 - `hydrateFromMeta(name?)`: reads and stores assignments from the SSR meta tag
 - `hydrateFromApi(params)`: fetches and stores assignments from the server API
+- `clearCache()`: clears all SDK-managed in-memory cache entries
 
 ## React integration
 
 ```ts
-import { ABProvider, useABClient } from "@derian-cordoba/ab-testing-sdk/react";
+import {
+  ABProvider,
+  useABClient,
+  useAssignments,
+} from "@derian-cordoba/ab-testing-sdk/react";
 ```
 
 Example:
@@ -481,19 +558,31 @@ import {
   createABClient,
   readAssignmentsFromMeta,
 } from "@derian-cordoba/ab-testing-sdk";
-import { ABProvider, useABClient } from "@derian-cordoba/ab-testing-sdk/react";
+import {
+  ABProvider,
+  useABClient,
+  useAssignments,
+} from "@derian-cordoba/ab-testing-sdk/react";
 
 const client = createABClient({
   initial: readAssignmentsFromMeta(),
+  cache: {
+    assignments: { enabled: true, ttlMs: 60_000 },
+  },
 });
 
 function CheckoutButton() {
   const ab = useABClient();
-  const variant = ab.getVariant("checkout-button-color");
+  const assignments = useAssignments();
+  const variant =
+    assignments.assignments["checkout-button-color"] ??
+    ab.getVariant("checkout-button-color");
 
-  return variant === "green"
-    ? <button className="btn-green">Buy now</button>
-    : <button className="btn-default">Buy now</button>;
+  return variant === "green" ? (
+    <button className="btn-green">Buy now</button>
+  ) : (
+    <button className="btn-default">Buy now</button>
+  );
 }
 
 export function App() {
@@ -508,7 +597,11 @@ export function App() {
 ## Vue integration
 
 ```ts
-import { installABTesting, useABClient } from "@derian-cordoba/ab-testing-sdk/vue";
+import {
+  installABTesting,
+  useABClient,
+  useAssignments,
+} from "@derian-cordoba/ab-testing-sdk/vue";
 ```
 
 Example:
@@ -519,16 +612,28 @@ import {
   createABClient,
   readAssignmentsFromMeta,
 } from "@derian-cordoba/ab-testing-sdk";
-import { installABTesting, useABClient } from "@derian-cordoba/ab-testing-sdk/vue";
+import {
+  installABTesting,
+  useABClient,
+  useAssignments,
+} from "@derian-cordoba/ab-testing-sdk/vue";
 
 const client = createABClient({
   initial: readAssignmentsFromMeta(),
+  cache: {
+    assignments: { enabled: true, ttlMs: 60_000 },
+  },
 });
 
 const app = createApp({
   setup() {
     const ab = useABClient();
-    const variant = computed(() => ab.getVariant("checkout-button-color"));
+    const { assignments } = useAssignments();
+    const variant = computed(
+      () =>
+        assignments.value["checkout-button-color"] ??
+        ab.getVariant("checkout-button-color")
+    );
 
     return { variant };
   },

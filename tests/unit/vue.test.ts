@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { defineComponent, h } from "vue";
-import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { flushPromises, mount } from "@vue/test-utils";
+import { describe, expect, it, vi } from "vitest";
 import {
   createClient,
 } from "../../src/application/factories/create-ab-client.js";
@@ -11,6 +11,9 @@ import {
   installABTesting,
   installFeatureFlagsAdmin,
   useABClient,
+  useAssignments,
+  useFeatureFlag,
+  useFeatureFlags,
   useFeatureFlagsAdminClient,
 } from "../../src/presentation/vue/index.js";
 
@@ -91,5 +94,197 @@ describe("Vue adapter", () => {
     });
 
     expect(wrapper.text()).toBe("ok");
+  });
+
+  it("hydrates assignments through a cache-aware composable", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          data: {
+            type: "assignments",
+            id: "user:99",
+            attributes: {
+              unit_type: "user",
+              unit_key: "99",
+              assignments: { hero: "variant" },
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+    const client = createClient({ cache: true, fetchImpl });
+
+    const Consumer = defineComponent({
+      setup() {
+        const state = useAssignments({
+          apiParams: { unitType: "user", unitKey: "99" },
+          hydrateFromApiOnMount: true,
+        });
+
+        return () => h("div", state.assignments.value.hero ?? "missing");
+      },
+    });
+
+    const first = mount(Consumer, {
+      global: {
+        provide: {
+          [ABClientKey as unknown as symbol]: client,
+        },
+      },
+    });
+
+    await flushPromises();
+    expect(first.text()).toBe("variant");
+
+    first.unmount();
+
+    const second = mount(Consumer, {
+      global: {
+        provide: {
+          [ABClientKey as unknown as symbol]: client,
+        },
+      },
+    });
+
+    await flushPromises();
+    expect(second.text()).toBe("variant");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads one feature flag through a cache-aware composable", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          data: {
+            id: "dark-mode",
+            type: "feature-flags",
+            attributes: {
+              is_enabled: true,
+              rollout_percentage: 25,
+              conditions: [],
+              conditions_logic: null,
+              is_killed: false,
+              killed_at: null,
+              last_evaluated_at: null,
+              created_at: null,
+              updated_at: null,
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+    const client = createClient({ cache: true, fetchImpl });
+
+    const Consumer = defineComponent({
+      setup() {
+        const state = useFeatureFlag("dark-mode");
+
+        return () => h("div", state.flag.value?.key ?? "missing");
+      },
+    });
+
+    const first = mount(Consumer, {
+      global: {
+        provide: {
+          [ABClientKey as unknown as symbol]: client,
+        },
+      },
+    });
+
+    await flushPromises();
+    expect(first.text()).toBe("dark-mode");
+
+    first.unmount();
+
+    const second = mount(Consumer, {
+      global: {
+        provide: {
+          [ABClientKey as unknown as symbol]: client,
+        },
+      },
+    });
+
+    await flushPromises();
+    expect(second.text()).toBe("dark-mode");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads the feature flag collection through a cache-aware composable", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "dark-mode",
+              type: "feature-flags",
+              attributes: {
+                is_enabled: true,
+                rollout_percentage: 25,
+                conditions: [],
+                conditions_logic: null,
+                is_killed: false,
+                killed_at: null,
+                last_evaluated_at: null,
+                created_at: null,
+                updated_at: null,
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+    const client = createClient({ cache: true, fetchImpl });
+
+    const Consumer = defineComponent({
+      setup() {
+        const state = useFeatureFlags({ params: { isEnabled: true } });
+
+        return () =>
+          h("div", String(state.collection.value?.items.length ?? 0));
+      },
+    });
+
+    const first = mount(Consumer, {
+      global: {
+        provide: {
+          [ABClientKey as unknown as symbol]: client,
+        },
+      },
+    });
+
+    await flushPromises();
+    expect(first.text()).toBe("1");
+
+    first.unmount();
+
+    const second = mount(Consumer, {
+      global: {
+        provide: {
+          [ABClientKey as unknown as symbol]: client,
+        },
+      },
+    });
+
+    await flushPromises();
+    expect(second.text()).toBe("1");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });

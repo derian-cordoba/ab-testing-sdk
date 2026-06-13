@@ -25,6 +25,11 @@ export type {
   MetaAssignmentsPayload,
 } from "./domain/contracts/ab-client.js";
 export type {
+  ABTestingClientCacheOptions,
+  ABTestingClientCacheNamespaceOptions,
+  ABTestingClientCacheStore,
+} from "./domain/contracts/client-cache.js";
+export type {
   CreateFeatureFlagParams,
   FeatureFlag,
   FeatureFlagCollection,

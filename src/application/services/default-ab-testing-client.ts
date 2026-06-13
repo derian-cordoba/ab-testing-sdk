@@ -5,6 +5,7 @@ import type {
   HydratedAssignments,
   UnitIdentity,
 } from "../../domain/contracts/ab-client.js";
+import type { ABTestingClientCacheStore } from "../../domain/contracts/client-cache.js";
 import type {
   CreateFeatureFlagParams,
   FeatureFlag,
@@ -14,72 +15,36 @@ import type {
   SetFeatureFlagConditionsParams,
   SetFeatureFlagRolloutParams,
 } from "../../domain/contracts/feature-flags-admin-client.js";
-import type {
-  ABTestingClient,
-  ABTestingClientOptions,
-} from "../../domain/contracts/ab-testing-client.js";
-import { DefaultABClient } from "./default-ab-client.js";
-import { DefaultFeatureFlagsAdminClient } from "./default-feature-flags-admin-client.js";
+import type { ABTestingClient } from "../../domain/contracts/ab-testing-client.js";
 
 /**
- * Unified SDK facade built from the runtime assignments client and the feature
- * flags admin client.
+ * Dependency bag required by the unified SDK facade.
+ */
+export interface DefaultABTestingClientDependencies {
+  runtimeClient: ABClient;
+  featureFlagsClient: FeatureFlagsAdminClient;
+  cacheStore?: ABTestingClientCacheStore | null;
+}
+
+/**
+ * Unified SDK facade built from already-composed runtime and feature flag
+ * capabilities.
+ *
+ * This class intentionally contains no cache policy, endpoint, or transport
+ * construction logic. Those concerns belong to the composition root.
  */
 export class DefaultABTestingClient implements ABTestingClient {
   private readonly runtimeClient: ABClient;
   private readonly featureFlagsClient: FeatureFlagsAdminClient;
+  private readonly cacheStore: ABTestingClientCacheStore | null;
 
   /**
    * Creates a new unified SDK client instance.
    */
-  public constructor(options: ABTestingClientOptions = {}) {
-    const runtimeOptions: ConstructorParameters<typeof DefaultABClient>[0] = {};
-
-    if (options.initial !== undefined) {
-      runtimeOptions.initial = options.initial;
-    }
-
-    if (options.assignmentsEndpoint !== undefined) {
-      runtimeOptions.endpoint = options.assignmentsEndpoint;
-    }
-
-    if (options.fetchImpl !== undefined) {
-      runtimeOptions.fetchImpl = options.fetchImpl;
-    }
-
-    if (options.acceptHeader !== undefined) {
-      runtimeOptions.acceptHeader = options.acceptHeader;
-    }
-
-    if (options.metaName !== undefined) {
-      runtimeOptions.metaName = options.metaName;
-    }
-
-    this.runtimeClient = new DefaultABClient(runtimeOptions);
-
-    const featureFlagsOptions: ConstructorParameters<
-      typeof DefaultFeatureFlagsAdminClient
-    >[0] = {};
-
-    if (options.featureFlagsEndpoint !== undefined) {
-      featureFlagsOptions.endpoint = options.featureFlagsEndpoint;
-    }
-
-    if (options.fetchImpl !== undefined) {
-      featureFlagsOptions.fetchImpl = options.fetchImpl;
-    }
-
-    if (options.acceptHeader !== undefined) {
-      featureFlagsOptions.acceptHeader = options.acceptHeader;
-    }
-
-    if (options.contentType !== undefined) {
-      featureFlagsOptions.contentType = options.contentType;
-    }
-
-    this.featureFlagsClient = new DefaultFeatureFlagsAdminClient(
-      featureFlagsOptions,
-    );
+  public constructor(dependencies: DefaultABTestingClientDependencies) {
+    this.runtimeClient = dependencies.runtimeClient;
+    this.featureFlagsClient = dependencies.featureFlagsClient;
+    this.cacheStore = dependencies.cacheStore ?? null;
   }
 
   /** @inheritdoc */
@@ -183,5 +148,10 @@ export class DefaultABTestingClient implements ABTestingClient {
   /** @inheritdoc */
   public clearFeatureFlagConditions(key: string): Promise<void> {
     return this.featureFlagsClient.clearFeatureFlagConditions(key);
+  }
+
+  /** @inheritdoc */
+  public clearCache(): void {
+    this.cacheStore?.clear();
   }
 }

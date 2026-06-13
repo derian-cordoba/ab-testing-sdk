@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createABClient } from "../../src/application/factories/create-ab-client.js";
 import {
   ABTestingError,
@@ -113,6 +113,76 @@ describe("DefaultABClient", () => {
       source: "api",
     });
     expect(client.getVariant("hero")).toBe("variant");
+  });
+
+  it("reuses assignment responses when cache is enabled", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          data: {
+            type: "assignments",
+            id: "user:99",
+            attributes: {
+              unit_type: "user",
+              unit_key: "99",
+              assignments: { hero: "variant" },
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+
+    const client = createABClient({
+      cache: true,
+      fetchImpl,
+    });
+
+    await client.hydrateFromApi({ unitType: "user", unitKey: "99" });
+    const hydrated = await client.hydrateFromApi({ unitType: "user", unitKey: "99" });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(hydrated.assignments).toEqual({ hero: "variant" });
+  });
+
+  it("clears cached assignment responses explicitly", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          data: {
+            type: "assignments",
+            id: "user:99",
+            attributes: {
+              unit_type: "user",
+              unit_key: "99",
+              assignments: { hero: "variant" },
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+
+    const client = createABClient({
+      cache: true,
+      fetchImpl,
+    });
+
+    await client.hydrateFromApi({ unitType: "user", unitKey: "99" });
+    client.clearCache();
+    await client.hydrateFromApi({ unitType: "user", unitKey: "99" });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("hydrateFromApi throws on non-success status", async () => {

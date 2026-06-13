@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createABClient } from "../../src/application/factories/create-ab-client.js";
 import { ABTestingFetchError, ABTestingParseError } from "../../src/domain/errors/ab-testing-error.js";
 import { normalizeFeatureFlagCollectionDocument } from "../../src/infrastructure/http/normalize-feature-flag-collection-document.js";
@@ -235,6 +235,39 @@ describe("DefaultFeatureFlagsAdminClient", () => {
     expect(restored.isKilled).toBe(false);
     expect(conditioned.conditionsLogic).toBe("any");
     expect(calls).toHaveLength(11);
+  });
+
+  it("reuses cached feature flag reads and invalidates them after writes", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url === "/api/v1/ab-testing/feature-flags/dark-mode" && init?.method === "GET") {
+        return jsonResponse(singleFlagPayload({ is_enabled: false }));
+      }
+
+      if (url === "/api/v1/ab-testing/feature-flags/dark-mode/enable") {
+        return jsonResponse(singleFlagPayload({ is_enabled: true }));
+      }
+
+      throw new Error(`Unhandled request: ${url}`);
+    });
+
+    const client = createABClient({
+      featureFlagsEndpoint: "/api/v1/ab-testing/feature-flags",
+      fetchImpl,
+      cache: true,
+    });
+
+    const first = await client.getFeatureFlag("dark-mode");
+    const second = await client.getFeatureFlag("dark-mode");
+    const enabled = await client.enableFeatureFlag("dark-mode");
+    const third = await client.getFeatureFlag("dark-mode");
+
+    expect(first.isEnabled).toBe(false);
+    expect(second.isEnabled).toBe(false);
+    expect(enabled.isEnabled).toBe(true);
+    expect(third.isEnabled).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   it("throws on failed feature flag admin requests", async () => {
