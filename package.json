@@ -1,0 +1,62 @@
+{
+  "name": "@derian-cordoba/ab-testing-sdk",
+  "version": "0.1.0",
+  "description": "Server-authoritative A/B testing hydration SDK for JavaScript and TypeScript clients.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist .tmp",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:types": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "vue": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.9.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vue/test-utils": "^2.4.11",
+    "jsdom": "^29.1.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.8",
+    "vue": "^3.5.38"
+  }
+}
