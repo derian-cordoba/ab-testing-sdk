@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AB Testing SDK React Example</title>
+    <meta
+      name="ab-testing:assignments"
+      content='{"unit_type":"user","unit_key":"42","assignments":{"checkout-button-color":"green","pricing-layout":"control"}}'
+    />
+    <style>
+      :root {
+        font-family: Inter, system-ui, sans-serif;
+        color: #1b1f23;
+        background: linear-gradient(180deg, #f6f1e8 0%, #fffdfa 100%);
+      }
+      body {
+        margin: 0;
+      }
+      #root {
+        min-height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
