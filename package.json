@@ -1,6 +1,6 @@
 {
   "name": "@derian-cordoba/ab-testing-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Server-authoritative A/B testing hydration SDK for JavaScript and TypeScript clients.",
   "license": "MIT",
   "type": "module",
