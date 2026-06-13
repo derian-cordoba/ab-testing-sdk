@@ -178,7 +178,7 @@ export function App() {
           <strong>Status:</strong> {statusLabel(status)}
         </div>
         <div>
-          <strong>Endpoint:</strong> <code>{sdkConfig.endpoint}</code>
+          <strong>Endpoint:</strong> <code>{sdkConfig.assignmentsEndpoint}</code>
         </div>
         <div>
           <strong>Accept:</strong> <code>{sdkConfig.acceptHeader}</code>

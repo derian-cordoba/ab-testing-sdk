@@ -47,6 +47,9 @@ const client = createABClientFromEnv(
 
 That means the example is now exercising the same env-resolution path that consumers of the root library should use.
 
+The SDK now resolves the assignments API through `assignmentsEndpoint`, so the
+example uses the same naming as the root library API.
+
 ## Environment loading
 
 Vite already loads `.env` files automatically, so this example no longer needs its own `dotenv` setup in `vite.config.ts`.
