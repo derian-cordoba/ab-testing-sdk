@@ -65,6 +65,42 @@ This keeps transport-specific logic away from the public contract and makes it e
 npm install @derian-cordoba/ab-testing-sdk
 ```
 
+## Environment configuration
+
+The SDK can configure itself automatically from environment variables.
+
+The root package includes a [`.env.example`](/Users/deriancordoba/Developer/personal/ab-testing/.env.example) file with the supported variables:
+
+```dotenv
+AB_TESTING_API_BASE_URL=
+AB_TESTING_ASSIGNMENTS_PATH=/api/v1/ab-testing/assignments
+AB_TESTING_ACCEPT_HEADER=application/vnd.ab-testing.v1+json
+AB_TESTING_META_NAME=ab-testing:assignments
+AB_TESTING_UNIT_TYPE=user
+AB_TESTING_UNIT_KEY=42
+```
+
+These variables are used by the SDK `EnvService` and the default client factory.
+
+### Supported variables
+
+- `AB_TESTING_API_BASE_URL`: optional backend origin such as `http://localhost:8765`
+- `AB_TESTING_ASSIGNMENTS_PATH`: assignments endpoint path or full URL
+- `AB_TESTING_ACCEPT_HEADER`: media type sent to the assignments API
+- `AB_TESTING_META_NAME`: SSR meta tag name used by `hydrateFromMeta()`
+- `AB_TESTING_UNIT_TYPE`: optional fallback unit type for application code
+- `AB_TESTING_UNIT_KEY`: optional fallback unit key for application code
+
+### Configuration precedence
+
+The SDK resolves configuration in this order:
+
+1. built-in SDK defaults
+2. environment-derived values from `EnvService`
+3. explicit options passed by the consumer
+
+That means you can rely on env defaults for shared setup and still override any field directly when creating the client.
+
 ## Core concepts
 
 ### Hydrated assignments
@@ -148,10 +184,75 @@ Accept: application/vnd.ab-testing.v1+json
 
 Creates the default in-memory SDK client.
 
+This factory now reads env-derived defaults automatically through `EnvService`, then applies any explicit `options` you pass.
+
 ```ts
 import { createABClient } from "@derian-cordoba/ab-testing-sdk";
 
 const client = createABClient();
+```
+
+Example with an explicit override:
+
+```ts
+const client = createABClient({
+  endpoint: "https://api.example.test/api/v1/ab-testing/assignments",
+});
+```
+
+### `createABClientFromEnv(envOptions?, clientOptions?)`
+
+Creates the default client from a custom env source or prefix.
+
+This is useful when your runtime does not use `process.env` directly, such as Vite with `import.meta.env`.
+
+```ts
+import { createABClientFromEnv } from "@derian-cordoba/ab-testing-sdk";
+
+const client = createABClientFromEnv(
+  {
+    source: import.meta.env,
+    prefix: "VITE_AB_",
+  },
+  {
+    initial: null,
+  },
+);
+```
+
+### `EnvService`
+
+Reads SDK configuration from one env source and normalizes it into a stable runtime config.
+
+```ts
+import { EnvService } from "@derian-cordoba/ab-testing-sdk";
+
+const env = EnvService.fromProcessEnv();
+const config = env.loadConfig();
+const unit = env.loadUnitIdentity();
+```
+
+Use `fromSource()` when your host framework exposes env variables through a custom object:
+
+```ts
+const env = EnvService.fromSource(import.meta.env, "VITE_AB_");
+```
+
+### `configureDotenv(options?)`
+
+Loads env variables from a dotenv file for Node.js or SSR entrypoints.
+
+This helper should not be used in browser-only bundles. It is intended for server runtimes before you create the client.
+
+```ts
+import {
+  configureDotenv,
+  createABClientFromEnv,
+} from "@derian-cordoba/ab-testing-sdk";
+
+await configureDotenv();
+
+const client = createABClientFromEnv();
 ```
 
 ### `readAssignmentsFromMeta(name?)`
