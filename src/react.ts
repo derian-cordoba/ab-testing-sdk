@@ -1,1 +1,6 @@
-export { ABProvider, useABClient } from "./presentation/react/index.js";
+export {
+  ABProvider,
+  FeatureFlagsAdminProvider,
+  useABClient,
+  useFeatureFlagsAdminClient,
+} from "./presentation/react/index.js";

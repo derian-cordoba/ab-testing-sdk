@@ -3,7 +3,13 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { createABClient } from "../../src/application/factories/create-ab-client.js";
-import { ABProvider, useABClient } from "../../src/presentation/react/index.js";
+import { createFeatureFlagsAdminClient } from "../../src/application/factories/create-feature-flags-admin-client.js";
+import {
+  ABProvider,
+  FeatureFlagsAdminProvider,
+  useABClient,
+  useFeatureFlagsAdminClient,
+} from "../../src/presentation/react/index.js";
 
 describe("React adapter", () => {
   it("provides the client through ABProvider", () => {
@@ -21,6 +27,28 @@ describe("React adapter", () => {
   it("throws when the hook is used outside the provider", () => {
     expect(() => renderHook(() => useABClient())).toThrow(
       "ABProvider is missing from the React tree.",
+    );
+  });
+
+  it("provides the feature flags admin client through FeatureFlagsAdminProvider", () => {
+    const client = createFeatureFlagsAdminClient();
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <FeatureFlagsAdminProvider client={client}>
+        {children}
+      </FeatureFlagsAdminProvider>
+    );
+
+    const { result } = renderHook(() => useFeatureFlagsAdminClient(), {
+      wrapper,
+    });
+
+    expect(result.current).toBe(client);
+  });
+
+  it("throws when the feature flags admin hook is used outside the provider", () => {
+    expect(() => renderHook(() => useFeatureFlagsAdminClient())).toThrow(
+      "FeatureFlagsAdminProvider is missing from the React tree.",
     );
   });
 });

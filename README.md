@@ -342,6 +342,104 @@ await client.setFeatureFlagConditions("dark-mode", {
 });
 ```
 
+### React integration
+
+The React adapter now includes a dedicated provider and hook for the feature
+flags admin client.
+
+```ts
+import {
+  FeatureFlagsAdminProvider,
+  useFeatureFlagsAdminClient,
+} from "@derian-cordoba/ab-testing-sdk/react";
+```
+
+Example:
+
+```tsx
+import React, { useEffect } from "react";
+import { createFeatureFlagsAdminClient } from "@derian-cordoba/ab-testing-sdk";
+import {
+  FeatureFlagsAdminProvider,
+  useFeatureFlagsAdminClient,
+} from "@derian-cordoba/ab-testing-sdk/react";
+
+const adminClient = createFeatureFlagsAdminClient({
+  endpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
+});
+
+function FeatureFlagsPanel() {
+  const flags = useFeatureFlagsAdminClient();
+
+  useEffect(() => {
+    void flags.listFeatureFlags();
+  }, [flags]);
+
+  return <div>Feature flags admin ready</div>;
+}
+
+export function App() {
+  return (
+    <FeatureFlagsAdminProvider client={adminClient}>
+      <FeatureFlagsPanel />
+    </FeatureFlagsAdminProvider>
+  );
+}
+```
+
+Available React helpers:
+
+- `FeatureFlagsAdminProvider`
+- `useFeatureFlagsAdminClient()`
+
+### Vue integration
+
+The Vue adapter also exposes a separate installation path for the feature flags
+admin client.
+
+```ts
+import {
+  installFeatureFlagsAdmin,
+  useFeatureFlagsAdminClient,
+} from "@derian-cordoba/ab-testing-sdk/vue";
+```
+
+Example:
+
+```ts
+import { createApp, defineComponent, h, onMounted } from "vue";
+import { createFeatureFlagsAdminClient } from "@derian-cordoba/ab-testing-sdk";
+import {
+  installFeatureFlagsAdmin,
+  useFeatureFlagsAdminClient,
+} from "@derian-cordoba/ab-testing-sdk/vue";
+
+const adminClient = createFeatureFlagsAdminClient({
+  endpoint: "http://localhost:8765/api/v1/ab-testing/feature-flags",
+});
+
+const Root = defineComponent({
+  setup() {
+    const flags = useFeatureFlagsAdminClient();
+
+    onMounted(() => {
+      void flags.listFeatureFlags();
+    });
+
+    return () => h("div", "Feature flags admin ready");
+  },
+});
+
+const app = createApp(Root);
+installFeatureFlagsAdmin(app, { client: adminClient });
+app.mount("#app");
+```
+
+Available Vue helpers:
+
+- `installFeatureFlagsAdmin(app, { client })`
+- `useFeatureFlagsAdminClient()`
+
 ### `readAssignmentsFromMeta(name?)`
 
 Reads the SSR meta tag and returns normalized assignments.
